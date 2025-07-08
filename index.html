@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสร้าง Prompt วิเคราะห์โจทย์ข้อสอบการอ่าน</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #ff8a50 0%, #ffb085 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2d3748;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8f65 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255,255,255,0.05) 10px,
+                rgba(255,255,255,0.05) 20px
+            );
+            animation: float 20s linear infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            margin-bottom: 0;
+        }
+        
+        .main-content {
+            padding: 40px 30px;
+        }
+        
+        .form-container {
+            background: linear-gradient(135deg, #fef7f0 0%, #fff5ee 100%);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid #fed7aa;
+            margin-bottom: 30px;
+        }
+        
+        .form-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #fed7aa;
+        }
+        
+        .form-header h2 {
+            color: #c2410c;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .form-header .icon {
+            font-size: 1.8rem;
+            margin-right: 12px;
+        }
+        
+        .form-grid {
+            display: grid;
+            gap: 25px;
+        }
+        
+        .form-group {
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #9a3412;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-group label .step-number {
+            background: #ff6b35;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+        
+        .form-group textarea,
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #fed7aa;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.6;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .form-group textarea:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #ff6b35;
+            box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .optional-badge {
+            background: #fbbf24;
+            color: #92400e;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .generate-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8f65 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .generate-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .generate-btn:hover::before {
+            left: 100%;
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(255, 107, 53, 0.4);
+        }
+        
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+        
+        .output-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .output-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .output-header h2 {
+            color: #475569;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .output-header .icon {
+            font-size: 1.8rem;
+            margin-right: 12px;
+        }
+        
+        .output-area {
+            width: 100%;
+            min-height: 350px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            background: white;
+            resize: none;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .output-area:focus {
+            outline: none;
+            border-color: #ff6b35;
+            box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .copy-btn {
+            padding: 15px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .copy-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .copy-btn:hover::before {
+            left: 100%;
+        }
+        
+        .copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+        
+        .ai-links {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .ai-links h3 {
+            color: #475569;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .ai-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        
+        .ai-btn {
+            padding: 12px 16px;
+            text-decoration: none;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ai-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .ai-btn:hover::before {
+            left: 100%;
+        }
+        
+        .ai-btn.chatgpt {
+            background: linear-gradient(135deg, #10a37f 0%, #08875a 100%);
+            color: white;
+        }
+        
+        .ai-btn.gemini {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+        }
+        
+        .ai-btn.claude {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+        }
+        
+        .ai-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 25px 30px;
+            text-align: center;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer p {
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        .footer .developer {
+            margin-top: 8px;
+            font-weight: 600;
+            color: #c2410c;
+            font-size: 15px;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            font-weight: 600;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .placeholder-text {
+            color: #9ca3af;
+            font-style: italic;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .main-content {
+                padding: 25px 20px;
+            }
+            
+            .form-container,
+            .output-container {
+                padding: 20px;
+            }
+            
+            .ai-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🎯 ระบบสร้าง Prompt วิเคราะห์โจทย์ข้อสอบ</h1>
+                <p>เครื่องมือช่วยสร้าง Prompt สำหรับให้ AI วิเคราะห์โจทย์ข้อสอบการอ่านและออกแนวทางการฝึก</p>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Input Section -->
+            <div class="form-container">
+                <div class="form-header">
+                    <span class="icon">📝</span>
+                    <h2>ข้อมูลโจทย์ข้อสอบ</h2>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="questionText">
+                            <span class="step-number">1</span>
+                            ข้อความจากโจทย์ (บทความ/เนื้อหาที่ให้อ่าน)
+                        </label>
+                        <textarea id="questionText" placeholder="วางข้อความโจทย์ข้อสอบการอ่านที่ต้องการวิเคราะห์...
+
+ตัวอย่าง: บทความเรื่อง 'การอนุรักษ์สิ่งแวดล้อม' หรือ เรื่องสั้น หรือ บทความวิชาการ ฯลฯ"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="choices">
+                            <span class="step-number">2</span>
+                            ข้อมูลตัวเลือก (ก, ข, ค, ง)
+                        </label>
+                        <textarea id="choices" placeholder="ใส่ตัวเลือกทั้ง 4 ข้อ...
+
+ตัวอย่าง:
+ก. การอนุรักษ์ธรรมชาติเป็นหน้าที่ของทุกคน
+ข. สิ่งแวดล้อมเป็นสิ่งสำคัญต่อการดำรงชีวิต
+ค. มนุษย์ควรใช้ทรัพยากรอย่างประหยัด
+ง. การพัฒนาประเทศต้องคำนึงถึงสิ่งแวดล้อม"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="correctAnswer">
+                            <span class="step-number">3</span>
+                            ข้อที่ถูกต้อง
+                            <span class="optional-badge">ไม่บังคับ</span>
+                        </label>
+                        <input type="text" id="correctAnswer" placeholder="เช่น: ก หรือ ข หรือ ค หรือ ง">
+                    </div>
+                    
+                    <button class="generate-btn" onclick="generatePrompt()">
+                        🚀 สร้าง Prompt
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Output Section -->
+            <div class="output-container">
+                <div class="output-header">
+                    <span class="icon">🚀</span>
+                    <h2>Prompt ที่สร้างขึ้น</h2>
+                </div>
+                
+                <textarea id="outputPrompt" class="output-area" readonly>
+<div class="placeholder-text">Prompt ที่สร้างขึ้นจะแสดงที่นี่...
+
+กรุณากรอกข้อมูลด้านบนและกดปุ่ม 'สร้าง Prompt' เพื่อสร้าง Prompt สำหรับให้ AI วิเคราะห์ข้อสอบ</div></textarea>
+                
+                <div class="action-buttons">
+                    <button class="copy-btn" onclick="copyPrompt()">
+                        📋 คัดลอก Prompt
+                    </button>
+                </div>
+                
+                <div class="ai-links">
+                    <h3>🤖 นำ Prompt ไปใช้กับ AI</h3>
+                    <div class="ai-buttons">
+                        <a href="https://chatgpt.com" target="_blank" class="ai-btn chatgpt">
+                            💬 ChatGPT
+                        </a>
+                        <a href="https://gemini.google.com" target="_blank" class="ai-btn gemini">
+                            ✨ Gemini
+                        </a>
+                        <a href="https://claude.ai" target="_blank" class="ai-btn claude">
+                            🧠 Claude
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🎓 เครื่องมือช่วยครูในการวิเคราะห์และปรับปรุงการสอน</p>
+            <p class="developer">พัฒนาโดย ครูนนทพัทธ์ หิรัญเรือง</p>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast">
+        ✅ คัดลอก Prompt เรียบร้อยแล้ว!
+    </div>
+
+    <script>
+        function generatePrompt() {
+            const questionText = document.getElementById('questionText').value.trim();
+            const choices = document.getElementById('choices').value.trim();
+            const correctAnswer = document.getElementById('correctAnswer').value.trim();
+            
+            if (!questionText || !choices) {
+                alert('⚠️ กรุณากรอกข้อความโจทย์และตัวเลือกให้ครบถ้วน');
+                return;
+            }
+            
+            let prompt = `# 📚 วิเคราะห์โจทย์ข้อสอบการอ่านระดับชาติ
+
+## 📖 โจทย์ที่ต้องวิเคราะห์:
+${questionText}
+
+## 🔤 ตัวเลือก:
+${choices}`;
+
+            if (correctAnswer) {
+                prompt += `\n\n## ✅ เฉลย: ${correctAnswer}`;
+            }
+
+            prompt += `
+
+## 🎯 คำสั่งการวิเคราะห์:
+
+กรุณาวิเคราะห์โจทย์ข้อสอบการอ่านนี้อย่างละเอียด โดยให้ครอบคลุมประเด็นต่อไปนี้:
+
+### 1. 🔍 การวิเคราะห์โจทย์
+- **ประเภทของโจทย์**: ระบุว่าเป็นโจทย์ประเภทใด (หาใจความสำคัญ, อนุมาน, วิเคราะห์, สังเคราะห์, ประเมินค่า)
+- **ทักษะการอ่านที่ต้องใช้**: ระบุทักษะการอ่านเฉพาะที่จำเป็น
+- **ระดับความยาก**: ประเมินระดับความยากของโจทย์
+
+### 2. 🧠 กระบวนการคิดที่ถูกต้อง
+- **ขั้นตอนการแก้โจทย์**: วิธีการอ่านและวิเคราะห์ที่ถูกต้อง
+- **จุดสำคัญที่ต้องจับ**: สิ่งที่นักเรียนต้องให้ความสำคัญ
+- **กับดักที่ควรระวัง**: ข้อผิดพลาดที่นักเรียนมักทำ`;
+
+            if (correctAnswer) {
+                prompt += `\n\n### 3. ✅ การอธิบายเฉลย
+- **เหตุผลที่ข้อ ${correctAnswer} ถูกต้อง**: อธิบายอย่างละเอียด
+- **เหตุผลที่ข้ออื่นผิด**: วิเคราะห์ทำไมตัวเลือกอื่นไม่ถูกต้อง`;
+            } else {
+                prompt += `\n\n### 3. ✅ การหาเฉลย
+- **ข้อใดคือคำตอบที่ถูกต้อง**: ระบุและอธิบายเหตุผล
+- **การประเมินตัวเลือกแต่ละข้อ**: วิเคราะห์ข้อดีข้อเสียของแต่ละตัวเลือก`;
+            }
+
+            prompt += `
+
+### 4. 📝 แนวทางการฝึกและพัฒนา
+- **จุดอ่อนที่พบบ่อย**: ปัญหาที่นักเรียนมักพบในโจทย์ประเภทนี้
+- **วิธีการฝึกฝน**: เทคนิคและวิธีการฝึกที่เฉพาะเจาะจง
+- **แบบฝึกหัดเพิ่มเติม**: ข้อเสนอแนะสำหรับการฝึกซ้อม
+- **เทคนิคการสอน**: แนวทางสำหรับครูในการสอนทักษะนี้
+
+### 5. 🎯 การประยุกต์ใช้
+- **ความเชื่อมโยงกับชีวิตจริง**: การนำทักษะไปใช้ในสถานการณ์จริง
+- **ทักษะในอนาคต**: ความสำคัญของทักษะนี้ต่อการเรียนรู้ต่อไป
+
+---
+
+**หมายเหตุ**: กรุณาให้คำตอบที่ละเอียด เป็นระบบ และเหมาะสมสำหรับการนำไปใช้ในการสอนและการเรียนรู้`;
+
+            document.getElementById('outputPrompt').value = prompt;
+        }
+        
+        function copyPrompt() {
+            const promptText = document.getElementById('outputPrompt').value;
+            
+            if (!promptText || promptText.includes('Prompt ที่สร้างขึ้นจะแสดงที่นี่')) {
+                alert('⚠️ ไม่มี Prompt ให้คัดลอก กรุณาสร้าง Prompt ก่อน');
+                return;
+            }
+            
+            navigator.clipboard.writeText(promptText).then(() => {
+                showToast();
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = promptText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast();
+            });
+        }
+        
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Auto-resize textareas
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        });
+        
+        // Add loading animation to generate button
+        document.querySelector('.generate-btn').addEventListener('click', function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '⏳ กำลังสร้าง...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
